@@ -4,9 +4,16 @@ import pystray
 import winsound
 from PIL import Image
 import os
+import sys
 import threading
 
-log_file = "log.md"
+base_path = "logs"
+
+# Ensure base directory exists
+if not os.path.exists(base_path):
+    os.makedirs(base_path)
+
+log_file = base_path + "/log.md"
 
 # --- defaults ---
 interval = 60 * 1
@@ -115,17 +122,19 @@ def open_config():
     """Open a configuration dialog for interval and log title."""
     config_win = tk.Toplevel(root)
     config_win.title("Configuration")
-    config_win.geometry("300x180")
+    config_win.geometry("300x300")
     config_win.attributes("-topmost", True)
 
     # Interval
-    tk.Label(config_win, text="Interval (seconds):").pack(pady=5)
-    interval_var = tk.StringVar(value=str(interval))
+    tk.Label(config_win, text="Interval (minutes):").pack(pady=5)
+    interval_var = tk.StringVar(value=str(int(interval / 60)))
     tk.Entry(config_win, textvariable=interval_var).pack(pady=5)
 
-    # Interval
+    # Log title
     tk.Label(config_win, text="Log title:").pack(pady=5)
-    log_title_var = tk.StringVar(value=str(log_file))
+    # Only use the filename, not full path
+    current_filename = os.path.basename(log_file)
+    log_title_var = tk.StringVar(value=current_filename)
     tk.Entry(config_win, textvariable=log_title_var).pack(pady=5)
 
     # Log title format
@@ -138,10 +147,16 @@ def open_config():
         global interval, log_title_format, log_file
         try:
             interval_val = int(interval_var.get())
-            log_file = log_title_var.get().strip() + ".md"
+            title_input = log_title_var.get().strip()
+            # Remove any existing .md to avoid double extension
+            if title_input.lower().endswith(".md"):
+                title_input = title_input[:-3]
+            # Join properly with base_path and add .md
+            log_file = os.path.join(base_path, title_input + ".md")
+
             if interval_val < 1:
                 raise ValueError
-            interval = interval_val
+            interval = interval_val * 60
         except ValueError:
             tk.messagebox.showerror("Error", "Interval must be a positive integer.")
             return
@@ -153,9 +168,10 @@ def open_config():
 
 
 def on_exit(icon, item):
-    stop_event.set()
-    icon.stop()
-    root.quit()
+    stop_event.set()  # Stop any scheduled popups
+    icon.stop()  # Stop the system tray icon
+    root.quit()  # Stop Tkinter loop
+    os._exit(0)
 
 
 def on_log_now(icon, item):
@@ -166,10 +182,17 @@ def on_config(icon, item):
     root.after(0, open_config)
 
 
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and PyInstaller"""
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+
 def run_tray():
     icon = pystray.Icon("LogTracker")
-    icon_image = Image.open("app.ico")
-    icon.icon = icon_image
+    icon_path = resource_path("app.ico")
+    icon.icon = Image.open(icon_path)
     icon.title = "Log Tracker"
     icon.menu = pystray.Menu(
         pystray.MenuItem("Log now", on_log_now),
