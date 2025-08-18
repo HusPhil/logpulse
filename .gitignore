@@ -5,3 +5,5 @@ dev_release
 venv/
 
 dev_dump
+
+*.pfx
