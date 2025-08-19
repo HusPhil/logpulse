@@ -22,6 +22,8 @@ popup_lock = threading.Lock()
 current_dialog = None
 current_text_box = None
 stop_event = threading.Event()
+paused = False  # <-- New flag
+
 
 def ensure_date_header():
     """Ensure today's header exists in log file (based on log_title_format)."""
@@ -35,9 +37,10 @@ def ensure_date_header():
             if today not in content:
                 f.write("\n" + today + "\n\n")
 
+
 def show_popup():
     global current_dialog, current_text_box
-    if stop_event.is_set():
+    if stop_event.is_set() or paused:  # respect pause state
         return
     if current_dialog and current_dialog.winfo_exists():
         current_dialog.lift()
@@ -79,7 +82,7 @@ def show_popup():
             dialog.destroy()
         current_dialog = None
         current_text_box = None
-        if not stop_event.is_set():
+        if not stop_event.is_set() and not paused:
             root.after(interval * 1000, schedule_popup)
 
     dialog = tk.Toplevel(root)
@@ -102,9 +105,11 @@ def show_popup():
     dialog.after(500, force_focus)
     winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS)
 
+
 def schedule_popup():
-    if not stop_event.is_set():
+    if not stop_event.is_set() and not paused:
         show_popup()
+
 
 def open_config():
     """Open a configuration dialog for interval and log title."""
@@ -152,31 +157,47 @@ def open_config():
 
     tk.Button(config_win, text="Save", command=save_config).pack(pady=10)
 
+
 def on_exit(icon, item):
     stop_event.set()  # Stop any scheduled popups
     icon.stop()  # Stop the system tray icon
     root.quit()  # Stop Tkinter loop
     os._exit(0)
 
+
 def on_log_now(icon, item):
     root.after(0, show_popup)
 
+
 def on_config(icon, item):
     root.after(0, open_config)
+
+
+def on_pause(icon, item):
+    """Toggle pause/resume logging popups."""
+    global paused
+    paused = not paused
+    if paused:
+        icon.title = "Log Tracker (Paused)"
+    else:
+        icon.title = "Log Tracker"
+        root.after(interval * 1000, schedule_popup)
+
 
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev, PyInstaller, and shiv"""
     # Check if running from PyInstaller
     if hasattr(sys, "_MEIPASS"):
         return os.path.join(sys._MEIPASS, relative_path)
-    
+
     # Check if we're in a shiv environment
     if "__shiv_python__" in os.environ:
         # Get the directory where the pyz is located
         pyz_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
         return os.path.join(pyz_dir, relative_path)
-    
+
     return os.path.join(os.path.abspath("."), relative_path)
+
 
 def run_tray():
     icon = pystray.Icon("LogTracker")
@@ -186,19 +207,19 @@ def run_tray():
     icon.menu = pystray.Menu(
         pystray.MenuItem("Log now", on_log_now),
         pystray.MenuItem("Config", on_config),
+        pystray.MenuItem("Pause/Resume", on_pause),  # <-- Added button
         pystray.MenuItem("Exit", on_exit),
     )
     icon.run()
 
+
 # --- main ---
 root = tk.Tk()
 root.withdraw()
+
 
 def main():
     """Main entry point for the application."""
     threading.Thread(target=run_tray, daemon=True).start()
     root.after(interval * 1000, schedule_popup)
     root.mainloop()
-
-if __name__ == "__main__":
-    main()
