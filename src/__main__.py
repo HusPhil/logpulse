@@ -34,8 +34,8 @@ def run_tray():
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.withdraw()
     root.title("Log Tracker")
-    root.resizable(False, False)
 
     app_model = ConfigModel()
     app_controller = Controller(model=app_model)

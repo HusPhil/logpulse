@@ -18,10 +18,16 @@ class LoggerView(BaseView):
         self.label = tk.Label(self, text="Logger UI", font=("Arial", 24))
         self.label.pack(pady=20)
 
-        self.button = tk.Button(
-            self, text="Change Message", command=self.controller.show_settings_view
+        self.view_settings_btn = tk.Button(
+            self, text="View Settings", command=self.controller.show_settings_view
         )
-        self.button.pack(pady=50, padx=100)
+        self.view_settings_btn.pack(pady=50, padx=100)
+
+        self.start_log_pulse_btn = tk.Button(
+            self, text="Start Log Pulse", command=self.controller.start_scheduler
+        )
+        self.start_log_pulse_btn.pack(pady=50, padx=100)
+
 
 
 class SettingsView(BaseView):
