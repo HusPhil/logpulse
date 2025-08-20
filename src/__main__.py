@@ -34,7 +34,6 @@ def run_tray():
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.withdraw()
     root.title("Log Tracker")
 
     app_model = ConfigModel()
