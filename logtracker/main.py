@@ -6,13 +6,12 @@ from PIL import Image
 import os
 import sys
 import threading
+import ctypes  # We'll use this for the rounded corners
 
 # --- DPI Awareness Fix for Windows (prevents blurriness on high-DPI screens) ---
 # This must be called before the main Tkinter window is created.
 try:
-    from ctypes import windll
-
-    windll.shcore.SetProcessDpiAwareness(1)
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)
 except:
     pass
 # --------------------------------------------------------------------------
@@ -34,6 +33,10 @@ current_text_box = None
 stop_event = threading.Event()
 paused = False  # <-- New flag
 
+# --- UI elements to update from other functions ---
+status_label = None
+pause_resume_button = None
+
 
 def ensure_date_header():
     """Ensure today's header exists in log file (based on log_title_format)."""
@@ -46,6 +49,35 @@ def ensure_date_header():
             content = f.read()
             if today not in content:
                 f.write("\n" + today + "\n\n")
+
+
+def set_rounded_corners(window, radius=20):
+    """
+    Applies rounded corners to a Tkinter window using the Windows API.
+    This function only works on Windows and requires the window to be
+    overrideredirected.
+    """
+    if sys.platform.startswith("win"):
+        try:
+            # Get the window's handle
+            hwnd = window.winfo_id()
+
+            # Define the API calls
+            gdi32 = ctypes.windll.gdi32
+            user32 = ctypes.windll.user32
+
+            # Create a rounded rectangular region with a specified radius
+            # (x1, y1, x2, y2, ellipse_width, ellipse_height)
+            rect = gdi32.CreateRoundRectRgn(
+                0, 0, window.winfo_width(), window.winfo_height(), radius, radius
+            )
+
+            # Apply the region to the window
+            # (window_handle, region_handle, redraw_window_flag)
+            user32.SetWindowRgn(hwnd, rect, True)
+        except Exception as e:
+            # Handle potential errors if the API calls fail
+            print(f"Error applying rounded corners: {e}")
 
 
 def show_popup():
@@ -110,6 +142,9 @@ def show_popup():
     dialog.attributes("-topmost", True)
     dialog.grab_set()
 
+    # Apply the rounded corners after a short delay to ensure window size is correct
+    dialog.after(10, lambda: set_rounded_corners(dialog, 20))
+
     label = tk.Label(dialog, text="What did you do? (Shift+Enter=new line, Enter=save)")
     label.pack(pady=5)
 
@@ -128,6 +163,8 @@ def show_popup():
 def schedule_popup():
     if not stop_event.is_set() and not paused:
         show_popup()
+    if status_label:
+        status_label.config(text="Status: Running")
 
 
 def open_config():
@@ -145,6 +182,9 @@ def open_config():
 
     config_win.geometry(f"{window_width}x{window_height}+{x_center}+{y_center}")
     config_win.attributes("-topmost", True)
+
+    # Apply the rounded corners after a short delay to ensure window size is correct
+    config_win.after(10, lambda: set_rounded_corners(config_win, 20))
 
     # Interval
     tk.Label(config_win, text="Interval (minutes):").pack(pady=5)
@@ -201,14 +241,22 @@ def on_config(icon, item):
     root.after(0, open_config)
 
 
-def on_pause(icon, item):
+def on_pause(icon, item=None):
     """Toggle pause/resume logging popups."""
     global paused
     paused = not paused
     if paused:
-        icon.title = "Log Tracker (Paused)"
+        icon.title = "Log Tracker (Paused)" if icon else "Log Tracker"
+        if pause_resume_button:
+            pause_resume_button.config(text="Resume")
+        if status_label:
+            status_label.config(text="Status: Paused")
     else:
-        icon.title = "Log Tracker"
+        icon.title = "Log Tracker" if icon else "Log Tracker"
+        if pause_resume_button:
+            pause_resume_button.config(text="Pause")
+        if status_label:
+            status_label.config(text="Status: Running")
         root.after(interval * 1000, schedule_popup)
 
 
@@ -241,13 +289,51 @@ def run_tray():
     icon.run()
 
 
+def setup_main_window():
+    """Build the main application window with controls."""
+    global status_label, pause_resume_button
+    root.title("Log Tracker")
+
+    # Calculate center position
+    window_width = 400
+    window_height = 200
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    x_center = (screen_width // 2) - (window_width // 2)
+    y_center = (screen_height // 2) - (window_height // 2)
+    root.geometry(f"{window_width}x{window_height}+{x_center}+{y_center}")
+
+    tk.Label(root, text="Log Tracker Control Panel", font=("Helvetica", 16)).pack(
+        pady=10
+    )
+
+    # Log File Display
+    tk.Label(root, text="Current Log File:").pack()
+    log_file_label = tk.Label(
+        root, text=os.path.basename(log_file), font=("Helvetica", 10, "italic")
+    )
+    log_file_label.pack()
+
+    # Status Label
+    status_label = tk.Label(root, text="Status: Not Running", font=("Helvetica", 12))
+    status_label.pack(pady=5)
+
+    # Control Buttons
+    button_frame = tk.Frame(root)
+    button_frame.pack(pady=10)
+
+    tk.Button(button_frame, text="Start", command=schedule_popup).pack(
+        side=tk.LEFT, padx=5
+    )
+    pause_resume_button = tk.Button(button_frame, text="Pause", command=on_pause)
+    pause_resume_button.pack(side=tk.LEFT, padx=5)
+    tk.Button(button_frame, text="Set Interval", command=open_config).pack(
+        side=tk.LEFT, padx=5
+    )
+
+
 # --- main ---
 root = tk.Tk()
-root.withdraw()
-
-
-def main():
-    """Main entry point for the application."""
-    threading.Thread(target=run_tray, daemon=True).start()
-    root.after(interval * 1000, schedule_popup)
-    root.mainloop()
+setup_main_window()
+threading.Thread(target=run_tray, daemon=True).start()
+root.mainloop()
