@@ -7,6 +7,16 @@ import os
 import sys
 import threading
 
+# --- DPI Awareness Fix for Windows (prevents blurriness on high-DPI screens) ---
+# This must be called before the main Tkinter window is created.
+try:
+    from ctypes import windll
+
+    windll.shcore.SetProcessDpiAwareness(1)
+except:
+    pass
+# --------------------------------------------------------------------------
+
 base_path = "logs"
 
 # Ensure base directory exists
@@ -87,7 +97,16 @@ def show_popup():
 
     dialog = tk.Toplevel(root)
     dialog.overrideredirect(True)
-    dialog.geometry("400x250+500+300")
+
+    # Calculate center position
+    window_width = 400
+    window_height = 250
+    screen_width = dialog.winfo_screenwidth()
+    screen_height = dialog.winfo_screenheight()
+    x_center = (screen_width // 2) - (window_width // 2)
+    y_center = (screen_height // 2) - (window_height // 2)
+
+    dialog.geometry(f"{window_width}x{window_height}+{x_center}+{y_center}")
     dialog.attributes("-topmost", True)
     dialog.grab_set()
 
@@ -115,7 +134,16 @@ def open_config():
     """Open a configuration dialog for interval and log title."""
     config_win = tk.Toplevel(root)
     config_win.title("Configuration")
-    config_win.geometry("300x300")
+
+    # Calculate center position for config window
+    window_width = 300
+    window_height = 300
+    screen_width = config_win.winfo_screenwidth()
+    screen_height = config_win.winfo_screenheight()
+    x_center = (screen_width // 2) - (window_width // 2)
+    y_center = (screen_height // 2) - (window_height // 2)
+
+    config_win.geometry(f"{window_width}x{window_height}+{x_center}+{y_center}")
     config_win.attributes("-topmost", True)
 
     # Interval
