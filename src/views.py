@@ -21,7 +21,7 @@ class LoggerView(BaseView):
         self.button = tk.Button(
             self, text="Change Message", command=self.controller.show_settings_view
         )
-        self.button.pack()
+        self.button.pack(pady=50, padx=100)
 
 
 class SettingsView(BaseView):
@@ -35,4 +35,4 @@ class SettingsView(BaseView):
         self.button = tk.Button(
             self, text="Change Message", command=self.controller.show_logger_view
         )
-        self.button.pack()
+        self.button.pack(pady=50, padx=100)
