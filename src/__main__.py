@@ -31,6 +31,30 @@ def run_tray():
     )
     icon.run()
 
+def center_window(root: tk.Tk):
+    """
+    Centers the Tkinter window on the screen.
+
+    Args:
+        root (tk.Tk): The main Tkinter window instance.
+    """
+    root.update_idletasks() # Ensures the window's geometry is up-to-date
+    
+    # Get the screen dimensions
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+
+    # Get the window's dimensions after it's been drawn
+    window_width = root.winfo_width()
+    window_height = root.winfo_height()
+
+    # Calculate the x and y coordinates for the center
+    x = (screen_width // 2) - (window_width // 2)
+    y = (screen_height // 2) - (window_height // 2)
+
+    # Set the new geometry to position the window
+    root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -44,4 +68,5 @@ if __name__ == "__main__":
     root.protocol("WM_DELETE_WINDOW", app_controller.handle_close_request)
     threading.Thread(target=run_tray, daemon=True).start()
 
+    center_window(root)
     root.mainloop()

@@ -7,3 +7,5 @@ venv/
 dev_dump
 
 *.pfx
+
+__pycache__/
