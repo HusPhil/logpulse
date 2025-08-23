@@ -8,7 +8,8 @@ from .utils import get_files_in_dir
 
 BASE_LOG_FILE_DIR = "logs"
 CONFIG_FILE = "config.json"
-DEFAULT_LOG_INTERVAL_MINS = 10
+DEFAULT_LOG_INTERVAL_MINS = 1
+DEFAULT_LOG_FILE_NAME = "logs.md"
 
 
 class Controller:
@@ -17,9 +18,12 @@ class Controller:
         self.model = model
         self.root: tk.Tk = None
         self._after_id = None
+        self._is_scheduler_running = False
 
         self.views = {}
         self.current_view: BaseView = None
+
+        self.log_interval_mins = DEFAULT_LOG_INTERVAL_MINS
 
     def setup_views(self, root):
         self.root = root
@@ -35,10 +39,12 @@ class Controller:
         Handles the WM_DELETE_WINDOW protocol.
         Prevents closing if the LoggerView is active.
         """
+
         self.root.withdraw()
 
     def show_logger_view(self):
         self._hide_current_view()
+        self.stop_scheduler()
         self.root.deiconify()
         self.current_view = self.views["logger"]
         self.current_view.pack(expand=True, fill="both")
@@ -67,23 +73,27 @@ class Controller:
         """The function that gets called repeatedly."""
         print("Running scheduled task...")
         # Show the scheduled view
-        if self.current_view != self.views["logger"]:
-            self.show_logger_view()
+        if not self._is_scheduler_running:
+            print("Scheduler not running...")
+
+            return
+
+        self.show_logger_view()
         # Schedule the next run. This is what creates the loop.
-        # Here, it's set to 5 seconds (5000 milliseconds).
-        config = self.load_config()
-        config_log_interval = config.get("log_interval_mins", DEFAULT_LOG_INTERVAL_MINS)
         self._after_id = self.root.after(
-            int(config_log_interval * 60 * 1000), self._run_scheduled_task
+            int(self.log_interval_mins * 60 * 1000), self._run_scheduled_task
         )
 
     def start_scheduler(self):
         """Starts the recurring task."""
-        if not self._after_id:
-            # Show the scheduled view immediately and start the loop
-            self.show_logger_view()
-            self._after_id = self.root.after(5000, self._run_scheduled_task)
-            print("Scheduler started.")
+        if self._is_scheduler_running:
+            return
+
+        self._is_scheduler_running = True
+        self._after_id = self.root.after(
+            self.log_interval_mins * 60 * 1000, self._run_scheduled_task
+        )
+        print("Scheduler started.")
 
     def stop_scheduler(self):
         """Stops the recurring task."""
@@ -92,9 +102,15 @@ class Controller:
             self._after_id = None
             print("Scheduler stopped.")
 
+        self._is_scheduler_running = False
+
     def restart_scheduler(self):
         self.stop_scheduler()
         self.start_scheduler()
+
+    def select_current_log_file(self, filename):
+        settings_view: SettingsView = self.views["settings"]
+        settings_view.log_options.set(filename)
 
     def refresh_file_list(self):
         try:
@@ -103,24 +119,26 @@ class Controller:
             if file_options:
                 settings_view.log_options["values"] = file_options
                 selected_option = settings_view.log_options_var.get()
-                settings_view.log_options.set(
+                self.select_current_log_file(
                     selected_option
                     if selected_option in file_options
                     else file_options[0]
                 )
             else:
                 settings_view.log_options["values"] = []
-                settings_view.log_options.set("")
+                self.create_log_file(DEFAULT_LOG_FILE_NAME, notify_user=False)
+                settings_view.log_options.set(DEFAULT_LOG_FILE_NAME)
 
         except Exception as e:
             # If you're running as .pyw (no console), show errors visibly
             messagebox.showerror("Error", f"Failed to read files:\n{e}")
 
-    def create_log_file(self):
+    def create_log_file(self, custom_filename: str = None, notify_user: bool = True):
 
         new_log_file: NewLogFileView = self.views["new_log_file"]
-
-        filename = new_log_file.new_log_file_name_var.get().strip()
+        filename = custom_filename
+        if not custom_filename:
+            filename = new_log_file.new_log_file_name_var.get().strip()
         if filename:
             # For now just print, but here’s where you’d call your util
             try:
@@ -135,9 +153,8 @@ class Controller:
                 with open(filepath, "x") as f:
                     f.write("")
 
-                messagebox.showinfo(
-                    "Success", f"Log file '{filename}' created successfully."
-                )
+                if notify_user:
+                    messagebox.showinfo("Success", f"{filename} created.")
 
                 self.refresh_file_list()
 
@@ -171,11 +188,13 @@ class Controller:
     def settings_save_and_run(self):
         settings_view: SettingsView = self.views["settings"]
         log_interval_mins = settings_view.log_interval_var.get()
+        self.log_interval_mins = log_interval_mins
         self.set_log_interval(log_interval_mins)
         messagebox.showinfo(
             "Success",
             f"You will be promted to log every {log_interval_mins} minute(s)",
         )
+        self.restart_scheduler()
         self.root.withdraw()
 
     def load_config(self):
