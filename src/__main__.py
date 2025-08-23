@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     app_controller.setup_views(root)
 
-    # root.protocol("WM_DELETE_WINDOW", app_controller.handle_close_request)
+    root.protocol("WM_DELETE_WINDOW", app_controller.handle_close_request)
     threading.Thread(target=run_tray, daemon=True).start()
 
     center_window(root)

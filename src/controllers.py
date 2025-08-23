@@ -152,9 +152,31 @@ class Controller:
             print("Please enter a file name.")
 
     def set_log_interval(self, interval_mins: int):
+        """
+        Set the log interval in minutes. Must be a positive integer.
+        Raises ValueError if input is invalid.
+        """
+
+        # Validate
+        if not isinstance(interval_mins, int):
+            raise ValueError("Log interval must be an integer (minutes).")
+        if interval_mins <= 0:
+            raise ValueError("Log interval must be greater than 0 minutes.")
+
+        # Load, update, and save config
         config = self.load_config()
         config["log_interval_mins"] = interval_mins
         self.save_config(config)
+
+    def settings_save_and_run(self):
+        settings_view: SettingsView = self.views["settings"]
+        log_interval_mins = settings_view.log_interval_var.get()
+        self.set_log_interval(log_interval_mins)
+        messagebox.showinfo(
+            "Success",
+            f"You will be promted to log every {log_interval_mins} minute(s)",
+        )
+        self.root.withdraw()
 
     def load_config(self):
         """Load config.json or return defaults if not found"""
