@@ -50,7 +50,7 @@ class SettingsView(BaseView):
 
         # NAVIGATE TO LOGGER
         self.button = tk.Button(
-            self, text="Save & Run", command=self.controller.restart_scheduler()
+            self, text="Save & Run", command=self.controller.settings_save_and_run
         )
         self.button.pack(pady=BOX_SIZE)
 
