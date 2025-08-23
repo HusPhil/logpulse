@@ -1,6 +1,7 @@
 import os
 from PIL import Image
 import tkinter as tk
+from tkinter import ttk
 import threading
 from pystray import Icon as TrayIcon, Menu as TrayMenu, MenuItem as TrayMenuItem
 from src.controllers import Controller
@@ -65,6 +66,17 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.title("Log Tracker")
 
+    style = ttk.Style()
+    style.theme_use("default")
+
+    # Remove blue focus highlight
+    style.map(
+        "TCombobox",
+        fieldbackground=[("readonly", "white")],  # normal background
+        selectbackground=[("!disabled", "white")],  # text select background
+        selectforeground=[("!disabled", "black")],  # text select foreground
+    )
+
     root.geometry(f"{HEIGHT}x{WIDTH}")
 
     app_model = ConfigModel()
@@ -72,7 +84,7 @@ if __name__ == "__main__":
 
     app_controller.setup_views(root)
 
-    root.protocol("WM_DELETE_WINDOW", app_controller.handle_close_request)
+    # root.protocol("WM_DELETE_WINDOW", app_controller.handle_close_request)
     threading.Thread(target=run_tray, daemon=True).start()
 
     center_window(root)
