@@ -5,6 +5,8 @@ import threading
 from pystray import Icon as TrayIcon, Menu as TrayMenu, MenuItem as TrayMenuItem
 from src.controllers import Controller
 from src.models import ConfigModel
+from .views import HEIGHT, WIDTH
+
 
 try:
     import ctypes
@@ -13,10 +15,12 @@ try:
 except:
     pass
 
+
 def on_exit(icon, item):
     icon.stop()  # Stop the system tray icon
     root.quit()  # Stop Tkinter loop
     os._exit(0)
+
 
 def run_tray():
     icon = TrayIcon("LogTracker")
@@ -31,6 +35,7 @@ def run_tray():
     )
     icon.run()
 
+
 def center_window(root: tk.Tk):
     """
     Centers the Tkinter window on the screen.
@@ -38,8 +43,8 @@ def center_window(root: tk.Tk):
     Args:
         root (tk.Tk): The main Tkinter window instance.
     """
-    root.update_idletasks() # Ensures the window's geometry is up-to-date
-    
+    root.update_idletasks()  # Ensures the window's geometry is up-to-date
+
     # Get the screen dimensions
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
@@ -59,6 +64,8 @@ def center_window(root: tk.Tk):
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Log Tracker")
+
+    root.geometry(f"{HEIGHT}x{WIDTH}")
 
     app_model = ConfigModel()
     app_controller = Controller(model=app_model)

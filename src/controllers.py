@@ -19,7 +19,7 @@ class Controller:
         self.views["logger"] = LoggerView(root, self)
         self.views["settings"] = SettingsView(root, self)
 
-        self.show_logger_view()
+        self.show_settings_view()
 
     def handle_close_request(self):
         """
@@ -40,7 +40,6 @@ class Controller:
         self._hide_current_view()
         self.current_view = self.views["settings"]
         self.current_view.pack(expand=True, fill="both")
-        
 
     def _hide_current_view(self):
         """A helper method to hide the currently visible view."""
@@ -79,5 +78,3 @@ class Controller:
             # self.views["main"].start_button.config(state=tk.NORMAL)
             # self.views["main"].stop_button.config(state=tk.DISABLED)
             print("Scheduler stopped.")
-
-    
