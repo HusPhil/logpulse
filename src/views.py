@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import TYPE_CHECKING
 
-from .utils import get_files_in_dir
 
 if TYPE_CHECKING:
     from src.controllers import Controller
@@ -42,54 +41,109 @@ class SettingsView(BaseView):
         super().__init__(parent, controller)
         self.controller = controller
 
-        file_options = get_files_in_dir("logs", [".md"])
-
+        # TITLE
         self.label = tk.Label(self, text="Settings UI", font=("Arial", 24))
         self.label.pack(pady=20)
 
+        self._build_log_options_frame()
+        self._build_log_interval_frame()
+
+        # NAVIGATE TO LOGGER
+        self.button = tk.Button(
+            self, text="Save & Run", command=self.controller.restart_scheduler()
+        )
+        self.button.pack(pady=BOX_SIZE)
+
+    def _build_log_options_frame(self):
+        """Creates the log file selection UI"""
         self.log_option_frame = tk.Frame(self)
 
+        # dropdown
         self.log_options_var = tk.StringVar()
         self.log_options = ttk.Combobox(
             self.log_option_frame,
             textvariable=self.log_options_var,
             state="readonly",
-            values=file_options,
         )
+        self.log_options.pack(side="left", padx=5)
 
+        # refresh button (small, next to dropdown)
         self.refresh_options_btn = tk.Button(
-            self.log_option_frame, text="Refresh", command=self.refresh_file_list
+            self.log_option_frame,
+            text="Refresh",
+            command=self.controller.refresh_file_list,
+        )
+        self.refresh_options_btn.pack(side="left", padx=5)
+
+        # refresh button (small, next to dropdown)
+        self.add_new_log_file_btn = tk.Button(
+            self.log_option_frame,
+            text="New",
+            command=self.controller.show_new_log_file_view,
+        )
+        self.add_new_log_file_btn.pack(side="left", padx=5)
+
+        self.log_option_frame.pack(pady=10)
+
+    def _build_log_interval_frame(self):
+        """Creates the log interval setting UI"""
+
+        self.log_interval_frame = tk.Frame(self)
+
+        config = self.controller.load_config()
+
+        # Label
+        self.log_interval_label = tk.Label(
+            self.log_interval_frame, text="Log Interval (mins):"
+        )
+        self.log_interval_label.pack(side="left", padx=5)
+
+        # Entry field
+        self.log_interval_var = tk.IntVar(value=config.get("log_interval_mins", 10))
+        self.log_interval_entry = tk.Entry(
+            self.log_interval_frame, textvariable=self.log_interval_var, width=8
+        )
+        self.log_interval_entry.pack(side="left", padx=5)
+
+        self.log_interval_frame.pack(pady=10)
+
+
+class NewLogFileView(BaseView):
+    def __init__(self, parent, controller):
+        super().__init__(parent, controller)
+        self.controller = controller
+
+        # TITLE
+        self.label = tk.Label(self, text="New Logfile", font=("Arial", 24))
+        self.label.pack(pady=20)
+
+        # TEXT FIELD: new_log_file_name
+        self.new_log_file_name_var = tk.StringVar()
+        self.entry_label = tk.Label(self, text="Log File Name:")
+        self.entry_label.pack(pady=(10, 0))
+        self.new_log_file_name = tk.Entry(self, textvariable=self.new_log_file_name_var)
+        self.new_log_file_name.pack(pady=10, padx=20)
+        self.note_label = tk.Label(
+            self, text="Note: You can press Enter to create log file"
+        )
+        self.note_label.pack()
+
+        self.new_log_file_name.bind(
+            "<Return>", lambda e: self.controller.create_log_file()
         )
 
-        self.log_options.pack()
-        self.log_option_frame.pack()
+        # CREATE + CANCEL FRAME
+        button_frame = tk.Frame(self)
+        button_frame.pack(pady=20)
 
-        self.refresh_btn = tk.Button(
-            self, text="Refresh files", command=self.refresh_file_list
+        # CREATE BUTTON
+        self.create_button = tk.Button(
+            button_frame, text="Create", command=self.controller.create_log_file
         )
-        self.refresh_btn.pack(pady=BOX_SIZE // 2)
+        self.create_button.pack(side=tk.LEFT, padx=10)
 
-        self.button = tk.Button(
-            self, text="Change Message", command=self.controller.show_logger_view
+        # CANCEL BUTTON
+        self.cancel_button = tk.Button(
+            button_frame, text="Cancel", command=self.controller.show_settings_view
         )
-        self.button.pack(pady=50, padx=100)
-
-    def refresh_file_list(self):
-        try:
-            file_options = get_files_in_dir("logs", [".md"])
-
-            if file_options:
-                self.log_options["values"] = file_options
-                selected_option = self.log_options_var.get()
-                self.log_options.set(
-                    selected_option
-                    if selected_option in file_options
-                    else file_options[0]
-                )
-            else:
-                self.log_options["values"] = []
-                self.log_options.set("")
-
-        except Exception as e:
-            # If you're running as .pyw (no console), show errors visibly
-            messagebox.showerror("Error", f"Failed to read files:\n{e}")
+        self.cancel_button.pack(side=tk.LEFT, padx=10)
